@@ -18,6 +18,9 @@
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/util/irange.h>
 
+
+#include <ATen/cuda/MyTensorSync.h>
+
 #if AT_CUDNN_ENABLED()
 #include <ATen/cudnn/cudnn-wrapper.h>
 #endif
@@ -107,6 +110,8 @@ void CUDAHooks::initCUDA() const {
   c10::cuda::CUDACachingAllocator::init(num_devices);
   at::cuda::detail::init_p2p_access_cache(num_devices);
 
+  initEventManager(num_devices);
+  
 #if AT_MAGMA_ENABLED()
   TORCH_INTERNAL_ASSERT(magma_init_fn != nullptr, "Cannot initialize magma, init routine not set");
   magma_init_fn();
@@ -245,6 +250,22 @@ bool CUDAHooks::hasPrimaryContext(DeviceIndex device_index) const {
 
 Allocator* CUDAHooks::getPinnedMemoryAllocator() const {
   return at::cuda::getPinnedMemoryAllocator();
+}
+
+Allocator* CUDAHooks::getMyCUDAHostAllocator() const {
+  return at::cuda::getMyCUDAHostAllocator();
+}
+
+void CUDAHooks::my_recordEvent(at::Tensor& src, const at::Tensor& dst, int device, at::cuda::CUDAStream stream) const {
+  recordEvent(src, dst, device, stream);
+}
+
+void CUDAHooks::my_syncEvent(void* ptr, int device, int cur_device, at::cuda::CUDAStream stream) const {
+  syncEvent(ptr, device, cur_device, stream);
+}
+
+c10::cuda::CUDAStream CUDAHooks::current_stream() const {
+  return c10::cuda::getCurrentCUDAStream();
 }
 
 Allocator* CUDAHooks::getCUDADeviceAllocator() const {

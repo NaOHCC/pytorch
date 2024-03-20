@@ -216,6 +216,18 @@ struct TORCH_API Module : public Object {
   /// effect.
   void to(at::Device device, bool non_blocking = false);
 
+  void cuda_host();
+
+  void to_and_record(at::Device device, bool non_blocking = false);
+
+  void synchronize(at::Device device);
+
+  void pin_memory();
+
+  void cuda_backup(bool non_blocking = true);
+
+  void clear();
+
   void save(
       std::ostream& out,
       const ExtraFilesMap& extra_files = ExtraFilesMap()) const;

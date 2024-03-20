@@ -4,6 +4,9 @@
 #include <c10/util/Exception.h>
 #include <c10/util/Registry.h>
 
+#include <ATen/Generator.h>
+#include <c10/cuda/CUDAStream.h>
+
 // Forward-declares at::Generator and at::cuda::NVRTC
 namespace at {
 struct Generator;
@@ -122,6 +125,22 @@ struct TORCH_API CUDAHooksInterface {
   virtual Allocator* getCUDADeviceAllocator() const {
     TORCH_CHECK(false, "CUDADeviceAllocator requires CUDA. ", CUDA_HELP);
   }
+
+  virtual c10::cuda::CUDAStream current_stream() const {
+    TORCH_CHECK(false, "current_stream requires CUDA. ", CUDA_HELP);
+  }
+
+  virtual Allocator* getMyCUDAHostAllocator() const {
+    TORCH_CHECK(false, "MyCUDAHostAllocator requires CUDA. ", CUDA_HELP);
+  }
+
+  virtual void my_recordEvent(at::Tensor& src, const at::Tensor& dst, int device, at::cuda::CUDAStream stream) const{
+    TORCH_CHECK(false, "my_recordEvent requires CUDA. ", CUDA_HELP);
+  };
+  
+  virtual void my_syncEvent(void* ptr, int device, int cur_device, at::cuda::CUDAStream stream) const{
+    TORCH_CHECK(false, "my_syncEvent requires CUDA. ", CUDA_HELP);
+  };
 
   virtual bool compiledWithCuDNN() const {
     return false;

@@ -43,8 +43,8 @@ endif()
 
 find_library(CUDNN_LIBRARY_PATH ${CUDNN_LIBNAME}
   PATHS ${CUDNN_LIBRARY}
-  PATH_SUFFIXES lib lib64 cuda/lib cuda/lib64 lib/x64)
-
+  NO_DEFAULT_PATH 
+  )
 find_package_handle_standard_args(CUDNN DEFAULT_MSG CUDNN_LIBRARY_PATH CUDNN_INCLUDE_PATH)
 
 if(CUDNN_FOUND)

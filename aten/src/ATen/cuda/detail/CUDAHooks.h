@@ -5,6 +5,7 @@
 #include <ATen/Generator.h>
 #include <c10/util/Optional.h>
 
+#include <c10/cuda/CUDAStream.h>
 // TODO: No need to have this whole header, we can just put it all in
 // the cpp file
 
@@ -33,6 +34,10 @@ struct CUDAHooks : public at::CUDAHooksInterface {
   bool hasPrimaryContext(DeviceIndex device_index) const override;
   Allocator* getCUDADeviceAllocator() const override;
   Allocator* getPinnedMemoryAllocator() const override;
+  Allocator* getMyCUDAHostAllocator() const override;
+  void my_recordEvent(at::Tensor& src, const at::Tensor& dst, int device, at::cuda::CUDAStream stream) const override;
+  void my_syncEvent(void* ptr, int device, int cur_device, at::cuda::CUDAStream stream) const override;
+  c10::cuda::CUDAStream current_stream() const override;
   bool compiledWithCuDNN() const override;
   bool compiledWithMIOpen() const override;
   bool supportsDilatedConvolutionWithCuDNN() const override;

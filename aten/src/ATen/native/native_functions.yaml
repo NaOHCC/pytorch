@@ -4479,6 +4479,18 @@
     NestedTensorCUDA, NestedTensorCPU: _pin_memory_nested
   autogen: _pin_memory.out
 
+- func: my_cuda_host(Tensor(a) self) -> Tensor(a)
+  variants: method
+
+- func: my_sync_device_(Tensor(a!) self, Device device) -> Tensor(a!)
+  variants: function, method
+
+- func: my_sync_tensor_(Tensor(a!) self, Tensor tensor) -> Tensor(a!)
+  variants: function, method
+
+- func: my_record_tensor(Tensor(a!) self, Tensor old, Device device) -> ()
+  variants: function, method
+
 - func: pinverse(Tensor self, float rcond=1e-15) -> Tensor
   variants: function, method
 
