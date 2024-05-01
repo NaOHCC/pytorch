@@ -194,6 +194,7 @@ void copy_device_to_device(TensorIterator& iter,
   // cudaMemcpyAsync on the default stream.
   CUDAStream copy_stream = getCurrentCUDAStream(src_device.index());
   if (src_device != dst_device) {
+    if(!non_blocking){
     // This is a cross-device copy on the src current stream and dst current
     // stream. We perform a two-way barrier between both devices' streams
     // before the copy. This ensures that any write-after-write and
@@ -206,6 +207,7 @@ void copy_device_to_device(TensorIterator& iter,
 
     device_guard.set_device(src_device);
     dst_ready.block(copy_stream);
+    }
   }
 
   if (memcpy_eligible) {
@@ -240,6 +242,7 @@ void copy_device_to_device(TensorIterator& iter,
   }
 
   if (src_device != dst_device) {
+    if (!non_blocking) {
     // dst waits on src barrier (dst already waits on dst). We cannot
     // operate on dst's copy until the copy is complete.
 
@@ -249,6 +252,7 @@ void copy_device_to_device(TensorIterator& iter,
 
     device_guard.set_device(dst_device);
     src_ready.block(getCurrentCUDAStream(dst_device.index()));
+    }
   }
 
   AT_CUDA_CHECK(cudaGetLastError());

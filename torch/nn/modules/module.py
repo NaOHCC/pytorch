@@ -461,6 +461,8 @@ class Module:
         super().__setattr__('_load_state_dict_pre_hooks', OrderedDict())
         super().__setattr__('_load_state_dict_post_hooks', OrderedDict())
         super().__setattr__('_modules', OrderedDict())
+        super().__setattr__('_prev_parameters', OrderedDict())
+        super().__setattr__('_prev_buffers', OrderedDict())
 
         if self.call_super_init:
             super().__init__(*args, **kwargs)
@@ -1220,6 +1222,18 @@ class Module:
         if prepend:
             self._backward_pre_hooks.move_to_end(handle.id, last=False)  # type: ignore[attr-defined]
         return handle
+
+    def pin_memory(self, *args, **kwargs):
+        def convert(t):
+            return t if t.is_pinned() else t.pin_memory()
+
+        return self._apply(convert)
+
+    def my_cuda_host(self, *args, **kwargs):
+        def convert(t):
+            return t if t.is_pinned() else t.my_cuda_host()
+
+        return self._apply(convert)
 
     def register_backward_hook(
         self, hook: Callable[['Module', _grad_t, _grad_t], Union[None, _grad_t]]

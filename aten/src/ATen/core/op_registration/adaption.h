@@ -56,8 +56,8 @@ inline void check_and_update_common_device(optional<Device>& common_device, cons
     common_device = tensor.device();
     return;
   }
-
   if (C10_UNLIKELY(common_device != tensor.device())) {
+    auto b = (common_device != tensor.device());
     common_device_check_failure(*common_device, tensor, methodName, argName);
   }
 }

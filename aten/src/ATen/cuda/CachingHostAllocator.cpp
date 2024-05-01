@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include "Exceptions.h"
 
 namespace at::cuda {
 namespace {
@@ -512,4 +513,22 @@ at::Allocator* getCachingHostAllocator() {
   return &cuda_host_allocator;
 }
 
+// 新分配的内存在Host上，但标记为CUDA
+struct MyCachingCUDAHostAllocator final : public at::Allocator {
+  at::DataPtr allocate(size_t size) const override {
+    auto ptr_and_ctx = getCUDAHostAllocator().allocate(size);
+    int device;
+    AT_CUDA_CHECK(cudaGetDevice(&device));
+    return {
+        ptr_and_ctx.first,
+        ptr_and_ctx.second,
+        &CUDAHostAllocatorDeleter,
+        at::Device(at::DeviceType::CUDA, device)};
+  }
+};
+
+static MyCachingCUDAHostAllocator my_caching_cuda_host_allocator;
+at::Allocator* getMyCachingCUDAHostAllocator() {
+  return &my_caching_cuda_host_allocator;
+}
 } // namespace at::cuda

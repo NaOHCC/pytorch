@@ -1,22 +1,24 @@
 #include <ATen/cuda/detail/CUDAHooks.h>
 
-#include <ATen/cuda/CUDAGeneratorImpl.h>
 #include <ATen/Context.h>
 #include <ATen/DeviceGuard.h>
 #include <ATen/DynamicLibrary.h>
 #include <ATen/core/Vitals.h>
 #include <ATen/cuda/CUDAConfig.h>
 #include <ATen/cuda/CUDADevice.h>
+#include <ATen/cuda/CUDAGeneratorImpl.h>
 #include <ATen/cuda/Exceptions.h>
 #include <ATen/cuda/PeerToPeerAccess.h>
 #include <ATen/cuda/PinnedMemoryAllocator.h>
 #include <ATen/cuda/nvrtc_stub/ATenNVRTC.h>
 #include <ATen/detail/CUDAHooksInterface.h>
 #include <ATen/native/cuda/CuFFTPlanCache.h>
-#include <c10/util/Exception.h>
 #include <c10/cuda/CUDACachingAllocator.h>
 #include <c10/cuda/CUDAFunctions.h>
+#include <c10/util/Exception.h>
 #include <c10/util/irange.h>
+
+#include <ATen/cuda/MyTensorSync.h>
 
 #if AT_CUDNN_ENABLED()
 #include <ATen/cudnn/cudnn-wrapper.h>
@@ -40,6 +42,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <sstream>
 
 namespace c10::cuda::_internal {
 void setHasPrimaryContext(bool (*func)(DeviceIndex));
@@ -71,10 +74,10 @@ bool _hasPrimaryContext(DeviceIndex device_index) {
 // Register hasPrimaryContext back to c10::cuda
 struct _Initializer {
   _Initializer() {
-      c10::cuda::_internal::setHasPrimaryContext(_hasPrimaryContext);
+    c10::cuda::_internal::setHasPrimaryContext(_hasPrimaryContext);
   }
   ~_Initializer() {
-      c10::cuda::_internal::setHasPrimaryContext(nullptr);
+    c10::cuda::_internal::setHasPrimaryContext(nullptr);
   }
 } initializer;
 } // anonymous namespace
@@ -106,6 +109,8 @@ void CUDAHooks::initCUDA() const {
   const auto num_devices = c10::cuda::device_count_ensure_non_zero();
   c10::cuda::CUDACachingAllocator::init(num_devices);
   at::cuda::detail::init_p2p_access_cache(num_devices);
+
+  initDeviceEventManager(num_devices);
 
 #if AT_MAGMA_ENABLED()
   TORCH_INTERNAL_ASSERT(magma_init_fn != nullptr, "Cannot initialize magma, init routine not set");
@@ -246,6 +251,43 @@ bool CUDAHooks::hasPrimaryContext(DeviceIndex device_index) const {
 Allocator* CUDAHooks::getPinnedMemoryAllocator() const {
   return at::cuda::getPinnedMemoryAllocator();
 }
+
+Allocator* CUDAHooks::getMyCUDAHostAllocator() const {
+  return at::cuda::getMyCUDAHostAllocator();
+}
+
+c10::cuda::CUDAStream CUDAHooks::current_stream() const {
+  return c10::cuda::getCurrentCUDAStream();
+}
+
+void CUDAHooks::my_recordAndReplaceEvent(
+    at::Tensor& src,
+    const at::Tensor& new_tensor,
+    c10::DeviceIndex recordAtDeviceIdx,
+    at::cuda::CUDAStream stream) const {
+  recordAndReplaceEvent(src, new_tensor, recordAtDeviceIdx, stream);
+};
+
+void CUDAHooks::recordEvent(
+    TensorId srcId,
+    TensorId dstId,
+    c10::DeviceIndex recordAtDeviceIdx,
+    at::cuda::CUDAStream stream) const {
+  at::recordEvent(srcId, dstId, recordAtDeviceIdx, stream);
+};
+
+void CUDAHooks::my_syncEvent(
+    TensorId ptr,
+    c10::DeviceIndex syncAtDeviceIdx,
+    c10::DeviceIndex currentTensorDeviceIdx,
+    at::cuda::CUDAStream stream,
+    bool enableLog) const {
+  syncEvent(ptr, syncAtDeviceIdx, currentTensorDeviceIdx, stream);
+};
+
+std::string CUDAHooks::my_pointerInfo(TensorId id) const {
+  return pointerInfo(id);
+};
 
 Allocator* CUDAHooks::getCUDADeviceAllocator() const {
   return at::cuda::getCUDADeviceAllocator();

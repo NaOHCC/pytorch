@@ -93,8 +93,7 @@ std::ostream& operator<<(std::ostream& out, const ConvolutionArgs& args) {
       << "input: " << args.idesc // already has a trailing newline
       << "output: " << args.odesc // already has a trailing newline
       << "weight: " << args.wdesc // already has a trailing newline
-      << "Pointer addresses: "
-      << "\n"
+      << "Pointer addresses: " << "\n"
       << "    input: " << args.input.data_ptr() << "\n"
       << "    output: " << args.output.data_ptr() << "\n"
       << "    weight: " << args.weight.data_ptr() << "\n";
@@ -133,11 +132,24 @@ struct BenchmarkCache {
     std::lock_guard<std::mutex> guard(mutex);
     map[params] = results;
   }
+
+  void clear() {
+    std::lock_guard<std::mutex> guard(mutex);
+    map.clear();
+  }
 };
 
 BenchmarkCache<cudnnConvolutionFwdAlgoPerf_t> fwd_algos;
 BenchmarkCache<cudnnConvolutionBwdDataAlgoPerf_t> bwd_data_algos;
 BenchmarkCache<cudnnConvolutionBwdFilterAlgoPerf_t> bwd_filter_algos;
+
+bool clear_benchmark() {
+  fwd_algos.clear();
+  bwd_data_algos.clear();
+  bwd_filter_algos.clear();
+
+  return true;
+}
 
 // TODO: Stop manually allocating CUDA memory; allocate an ATen byte
 // tensor instead.
@@ -572,6 +584,63 @@ class AlgoIterator {
     }
     TORCH_CHECK(
         false, "Unable to find a valid cuDNN algorithm to run convolution");
+  }
+
+  void print_performance(
+      std::ostream& out,
+      const ConvolutionParams& params,
+      const std::vector<perf_t>& results) {
+    std::string partial_dtype;
+    switch (params.dataType) {
+      case CUDNN_DATA_FLOAT:
+        partial_dtype = "float";
+        break;
+      case CUDNN_DATA_DOUBLE:
+        partial_dtype = "double";
+        break;
+      case CUDNN_DATA_HALF:
+        partial_dtype = "half";
+        break;
+      default:
+        partial_dtype = "unsupported";
+    }
+
+    const std::string full_dtype = "torch." + partial_dtype;
+    const int out_channels = params.weight_size[0];
+    const int in_channels = params.weight_size[1] * params.groups;
+    const size_t dim = params.input_dim;
+    const std::string channels_last_xd =
+        dim == 4 ? "channels_last" : "channels_last_3d";
+    const std::string to_channels_last =
+        ((params.memory_format == at::MemoryFormat::ChannelsLast) ||
+         (params.memory_format == at::MemoryFormat::ChannelsLast3d))
+        ? ".to(memory_format=torch." + channels_last_xd + ")"
+        : "";
+
+    out << "data = torch.randn(" << ArrayRef<int>(params.input_size, dim)
+        << ", dtype=" << full_dtype << ", ";
+    out << "device='cuda', requires_grad=True)" << to_channels_last << "\n";
+    out << "net = torch.nn.Conv" << dim - 2 << "d(" << in_channels << ", "
+        << out_channels << ", ";
+    out << "kernel_size=" << ArrayRef<int>(&params.weight_size[2], dim - 2)
+        << ", ";
+    out << "padding=" << ArrayRef<int>(params.padding, dim - 2) << ", ";
+    out << "stride=" << ArrayRef<int>(params.stride, dim - 2) << ", ";
+    out << "dilation=" << ArrayRef<int>(params.dilation, dim - 2) << ", ";
+    out << "groups=" << params.groups << ")\n";
+
+    for (int i = 0; i < CUDNN_CONVOLUTION_FWD_ALGO_COUNT; i++) {
+      auto it =
+          find_if(results.begin(), results.end(), [&i](const perf_t& obj) {
+            return obj.algo == i;
+          });
+      if (it == results.end()) {
+        out << i << ": None\n";
+      } else {
+        out << i << ": " << it->time << " ms\n";
+      }
+    }
+    out << "pick: " << results[0].algo << "\n";
   }
 };
 

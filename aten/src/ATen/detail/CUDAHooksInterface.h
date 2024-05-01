@@ -4,7 +4,10 @@
 #include <c10/util/Exception.h>
 #include <c10/util/Registry.h>
 
+#include <ATen/Generator.h>
+#include <ATen/cuda/MyTensorSync.h>
 #include <ATen/detail/AcceleratorHooksInterface.h>
+#include <c10/cuda/CUDAStream.h>
 
 // Forward-declares at::Generator and at::cuda::NVRTC
 namespace at {
@@ -19,28 +22,28 @@ namespace at {
 
 #ifdef _MSC_VER
 constexpr const char* CUDA_HELP =
-  "PyTorch splits its backend into two shared libraries: a CPU library "
-  "and a CUDA library; this error has occurred because you are trying "
-  "to use some CUDA functionality, but the CUDA library has not been "
-  "loaded by the dynamic linker for some reason.  The CUDA library MUST "
-  "be loaded, EVEN IF you don't directly use any symbols from the CUDA library! "
-  "One common culprit is a lack of -INCLUDE:?warp_size@cuda@at@@YAHXZ "
-  "in your link arguments; many dynamic linkers will delete dynamic library "
-  "dependencies if you don't depend on any of their symbols.  You can check "
-  "if this has occurred by using link on your binary to see if there is a "
-  "dependency on *_cuda.dll library.";
+    "PyTorch splits its backend into two shared libraries: a CPU library "
+    "and a CUDA library; this error has occurred because you are trying "
+    "to use some CUDA functionality, but the CUDA library has not been "
+    "loaded by the dynamic linker for some reason.  The CUDA library MUST "
+    "be loaded, EVEN IF you don't directly use any symbols from the CUDA library! "
+    "One common culprit is a lack of -INCLUDE:?warp_size@cuda@at@@YAHXZ "
+    "in your link arguments; many dynamic linkers will delete dynamic library "
+    "dependencies if you don't depend on any of their symbols.  You can check "
+    "if this has occurred by using link on your binary to see if there is a "
+    "dependency on *_cuda.dll library.";
 #else
 constexpr const char* CUDA_HELP =
-  "PyTorch splits its backend into two shared libraries: a CPU library "
-  "and a CUDA library; this error has occurred because you are trying "
-  "to use some CUDA functionality, but the CUDA library has not been "
-  "loaded by the dynamic linker for some reason.  The CUDA library MUST "
-  "be loaded, EVEN IF you don't directly use any symbols from the CUDA library! "
-  "One common culprit is a lack of -Wl,--no-as-needed in your link arguments; many "
-  "dynamic linkers will delete dynamic library dependencies if you don't "
-  "depend on any of their symbols.  You can check if this has occurred by "
-  "using ldd on your binary to see if there is a dependency on *_cuda.so "
-  "library.";
+    "PyTorch splits its backend into two shared libraries: a CPU library "
+    "and a CUDA library; this error has occurred because you are trying "
+    "to use some CUDA functionality, but the CUDA library has not been "
+    "loaded by the dynamic linker for some reason.  The CUDA library MUST "
+    "be loaded, EVEN IF you don't directly use any symbols from the CUDA library! "
+    "One common culprit is a lack of -Wl,--no-as-needed in your link arguments; many "
+    "dynamic linkers will delete dynamic library dependencies if you don't "
+    "depend on any of their symbols.  You can check if this has occurred by "
+    "using ldd on your binary to see if there is a dependency on *_cuda.so "
+    "library.";
 #endif
 
 // The CUDAHooksInterface is an omnibus interface for any CUDA functionality
@@ -66,15 +69,23 @@ struct TORCH_API CUDAHooksInterface : AcceleratorHooksInterface {
 
   // Initialize THCState and, transitively, the CUDA state
   virtual void initCUDA() const {
-    TORCH_CHECK(false, "Cannot initialize CUDA without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false, "Cannot initialize CUDA without ATen_cuda library. ", CUDA_HELP);
   }
 
-  virtual const Generator& getDefaultCUDAGenerator(C10_UNUSED DeviceIndex device_index = -1) const {
-    TORCH_CHECK(false, "Cannot get default CUDA generator without ATen_cuda library. ", CUDA_HELP);
+  virtual const Generator& getDefaultCUDAGenerator(
+      C10_UNUSED DeviceIndex device_index = -1) const {
+    TORCH_CHECK(
+        false,
+        "Cannot get default CUDA generator without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual Device getDeviceFromPtr(void* /*data*/) const {
-    TORCH_CHECK(false, "Cannot get device of pointer on CUDA without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot get device of pointer on CUDA without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual bool isPinnedPtr(const void* /*data*/) const {
@@ -110,7 +121,12 @@ struct TORCH_API CUDAHooksInterface : AcceleratorHooksInterface {
   }
 
   virtual bool hasPrimaryContext(DeviceIndex device_index) const override {
-    TORCH_CHECK(false, "Cannot call hasPrimaryContext(", device_index, ") without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot call hasPrimaryContext(",
+        device_index,
+        ") without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual DeviceIndex current_device() const {
@@ -124,6 +140,43 @@ struct TORCH_API CUDAHooksInterface : AcceleratorHooksInterface {
   virtual Allocator* getCUDADeviceAllocator() const {
     TORCH_CHECK(false, "CUDADeviceAllocator requires CUDA. ", CUDA_HELP);
   }
+
+  virtual c10::cuda::CUDAStream current_stream() const {
+    TORCH_CHECK(false, "current_stream requires CUDA. ", CUDA_HELP);
+  }
+
+  virtual Allocator* getMyCUDAHostAllocator() const {
+    TORCH_CHECK(false, "MyCUDAHostAllocator requires CUDA. ", CUDA_HELP);
+  }
+
+  virtual void my_recordAndReplaceEvent(
+      at::Tensor& src,
+      const at::Tensor& new_tensor,
+      c10::DeviceIndex recordAtDeviceIdx,
+      at::cuda::CUDAStream stream) const {
+    TORCH_CHECK(false, "my_recordAndReplaceEvent requires CUDA. ", CUDA_HELP);
+  };
+
+  virtual void recordEvent(
+      TensorId srcId,
+      TensorId dstId,
+      c10::DeviceIndex recordAtDeviceIdx,
+      at::cuda::CUDAStream stream) const {
+    TORCH_CHECK(false, "my_recordEvent requires CUDA. ", CUDA_HELP);
+  };
+
+  virtual void my_syncEvent(
+      TensorId ptr,
+      c10::DeviceIndex syncAtDeviceIdx,
+      c10::DeviceIndex currentTensorDeviceIdx,
+      at::cuda::CUDAStream stream,
+      bool enableLog = true) const {
+    TORCH_CHECK(false, "my_syncEvent requires CUDA. ", CUDA_HELP);
+  };
+
+  virtual std::string my_pointerInfo(TensorId id) const {
+    TORCH_CHECK(false, "my_pointerInfo requires CUDA. ", CUDA_HELP);
+  };
 
   virtual bool compiledWithCuDNN() const {
     return false;
@@ -146,36 +199,61 @@ struct TORCH_API CUDAHooksInterface : AcceleratorHooksInterface {
   }
 
   virtual long versionCuDNN() const {
-    TORCH_CHECK(false, "Cannot query cuDNN version without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot query cuDNN version without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual long versionCUDART() const {
-    TORCH_CHECK(false, "Cannot query CUDART version without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot query CUDART version without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual std::string showConfig() const {
-    TORCH_CHECK(false, "Cannot query detailed CUDA version without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot query detailed CUDA version without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual double batchnormMinEpsilonCuDNN() const {
-    TORCH_CHECK(false,
-        "Cannot query batchnormMinEpsilonCuDNN() without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot query batchnormMinEpsilonCuDNN() without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual int64_t cuFFTGetPlanCacheMaxSize(DeviceIndex /*device_index*/) const {
-    TORCH_CHECK(false, "Cannot access cuFFT plan cache without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot access cuFFT plan cache without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
-  virtual void cuFFTSetPlanCacheMaxSize(DeviceIndex /*device_index*/, int64_t /*max_size*/) const {
-    TORCH_CHECK(false, "Cannot access cuFFT plan cache without ATen_cuda library. ", CUDA_HELP);
+  virtual void cuFFTSetPlanCacheMaxSize(
+      DeviceIndex /*device_index*/,
+      int64_t /*max_size*/) const {
+    TORCH_CHECK(
+        false,
+        "Cannot access cuFFT plan cache without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual int64_t cuFFTGetPlanCacheSize(DeviceIndex /*device_index*/) const {
-    TORCH_CHECK(false, "Cannot access cuFFT plan cache without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot access cuFFT plan cache without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual void cuFFTClearPlanCache(DeviceIndex /*device_index*/) const {
-    TORCH_CHECK(false, "Cannot access cuFFT plan cache without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot access cuFFT plan cache without ATen_cuda library. ",
+        CUDA_HELP);
   }
 
   virtual int getNumGPUs() const {
@@ -183,7 +261,10 @@ struct TORCH_API CUDAHooksInterface : AcceleratorHooksInterface {
   }
 
   virtual void deviceSynchronize(DeviceIndex /*device_index*/) const {
-    TORCH_CHECK(false, "Cannot synchronize CUDA device without ATen_cuda library. ", CUDA_HELP);
+    TORCH_CHECK(
+        false,
+        "Cannot synchronize CUDA device without ATen_cuda library. ",
+        CUDA_HELP);
   }
 };
 

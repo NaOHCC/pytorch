@@ -165,6 +165,98 @@ void Module::to(at::Device device, bool non_blocking) {
   to_impl(device, /*dtype=*/c10::nullopt, non_blocking);
 }
 
+void Module::cuda_host() {
+  for (at::Tensor e : parameters()) {
+    auto new_data = e.my_cuda_host();
+    e.set_data(new_data);
+  }
+  for (at::Tensor e : buffers()) {
+    auto new_data = e.my_cuda_host();
+    e.set_data(new_data);
+  }
+}
+
+void Module::to_and_record(at::Device device, bool non_blocking) {
+  // TODO: device must be cuda, otherwise return
+  c10::optional<at::Tensor> record_tensor;
+  for (auto e : named_parameters()) {
+    // 找到权重, 保存到 record_tensor
+    if (e.name.find("weight") != std::string::npos) {
+      record_tensor = e.value;
+    } else {
+      auto new_data = e.value.to(device, non_blocking);
+      e.value.set_data(new_data);
+    }
+  }
+  for (auto e : named_buffers()) {
+    auto new_data = e.value.to(device, non_blocking);
+    e.value.set_data(new_data);
+  }
+
+  if (record_tensor.has_value()) {
+    auto new_data = record_tensor.value().to(device, non_blocking);
+    record_tensor.value().my_record_and_replace_tensor(new_data, device);
+  }
+}
+
+void Module::synchronize(at::Device device) {
+  // TODO: device must be cuda, otherwise return
+  at::Tensor sync_tensor;
+  for (auto e : named_parameters()) {
+    if (e.name.find("weight") != std::string::npos) {
+      e.value.my_sync_device_(device);
+    }
+  }
+
+  //  for (at::Tensor e : parameters()) {
+  //    e.sync_device_(device);
+  //  }
+  //  for (at::Tensor e : buffers()) {
+  //    e.sync_device_(device);
+  //  }
+}
+
+void Module::pin_memory() {
+  for (at::Tensor e : parameters()) {
+    auto new_data = e.pin_memory();
+    e.set_data(new_data);
+  }
+  for (at::Tensor e : buffers()) {
+    auto new_data = e.pin_memory();
+    e.set_data(new_data);
+  }
+}
+
+// TODO Remove redundancy
+void Module::cuda_backup(bool non_blocking) {
+  for (auto named_param : named_parameters()) {
+    std::string name = "prev_" + named_param.name;
+    at::Tensor t = named_param.value.tensor_data();
+    register_attribute(name, TensorType::get(), t);
+  }
+  for (auto named_buf : named_buffers()) {
+    std::string name = "prev_" + named_buf.name;
+    at::Tensor t = named_buf.value.tensor_data();
+    register_attribute(name, TensorType::get(), t);
+  }
+}
+
+// TODO Remove redundancy
+void Module::clear() {
+  for (auto named_param : named_parameters()) {
+    std::string name = "prev_" + named_param.name;
+    auto t = _ivalue()->getAttr(name).toTensor();
+
+    named_param.value.set_data(t);
+  }
+  for (auto named_buf : named_buffers()) {
+    std::string name = "prev_" + named_buf.name;
+    auto t = _ivalue()->getAttr(name).toTensor();
+
+    named_buf.value.set_data(t);
+  }
+}
+
 static void module_state_to(
     const autograd::Variable& variable,
     const c10::optional<at::Device>& device,
