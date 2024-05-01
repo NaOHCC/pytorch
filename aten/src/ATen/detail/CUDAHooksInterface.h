@@ -4,6 +4,10 @@
 #include <c10/util/Exception.h>
 #include <c10/util/Registry.h>
 
+#include <ATen/Generator.h>
+#include <c10/cuda/CUDAStream.h>
+#include <ATen/cuda/MyTensorSync.h>
+
 // Forward-declares at::Generator and at::cuda::NVRTC
 namespace at {
 struct Generator;
@@ -122,6 +126,43 @@ struct TORCH_API CUDAHooksInterface {
   virtual Allocator* getCUDADeviceAllocator() const {
     TORCH_CHECK(false, "CUDADeviceAllocator requires CUDA. ", CUDA_HELP);
   }
+
+  virtual c10::cuda::CUDAStream current_stream() const {
+    TORCH_CHECK(false, "current_stream requires CUDA. ", CUDA_HELP);
+  }
+
+  virtual Allocator* getMyCUDAHostAllocator() const {
+    TORCH_CHECK(false, "MyCUDAHostAllocator requires CUDA. ", CUDA_HELP);
+  }
+
+  virtual void my_recordAndReplaceEvent(
+      at::Tensor& src,
+      const at::Tensor& new_tensor,
+      c10::DeviceIndex recordAtDeviceIdx,
+      at::cuda::CUDAStream stream) const {
+    TORCH_CHECK(false, "my_recordAndReplaceEvent requires CUDA. ", CUDA_HELP);
+  };
+
+  virtual void recordEvent(
+      TensorId srcId,
+      TensorId dstId,
+      c10::DeviceIndex recordAtDeviceIdx,
+      at::cuda::CUDAStream stream) const {
+    TORCH_CHECK(false, "my_recordEvent requires CUDA. ", CUDA_HELP);
+  };
+
+  virtual void my_syncEvent(
+      TensorId ptr,
+      c10::DeviceIndex syncAtDeviceIdx,
+      c10::DeviceIndex currentTensorDeviceIdx,
+      at::cuda::CUDAStream stream,
+      bool enableLog = true) const {
+    TORCH_CHECK(false, "my_syncEvent requires CUDA. ", CUDA_HELP);
+  };
+
+  virtual std::string my_pointerInfo(TensorId id) const {
+    TORCH_CHECK(false, "my_pointerInfo requires CUDA. ", CUDA_HELP);
+  };
 
   virtual bool compiledWithCuDNN() const {
     return false;

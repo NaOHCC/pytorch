@@ -21,6 +21,7 @@ namespace at::cuda {
 // blocks, unlike the caching device allocator.
 //
 TORCH_CUDA_CPP_API c10::Allocator* getCachingHostAllocator();
+TORCH_CUDA_CPP_API c10::Allocator* getMyCachingCUDAHostAllocator();
 
 // Records an event in the specified stream. The allocation corresponding to the
 // input `ptr`/`ctx` will not be re-used until the event has occurred.
