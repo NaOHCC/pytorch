@@ -5,7 +5,6 @@
 #include <c10/util/Logging.h>
 #include <driver_types.h>
 #include <fmt/format.h>
-#include <glog/logging.h>
 #include <cassert>
 #include <condition_variable>
 #include <iostream>
@@ -179,13 +178,13 @@ class DeviceEventManager {
     // C10_CUDA_CHECK(cudaEventSynchronize(event));
     // freeCudaEvent(event);
 
-    auto log = fmt::format(
-        R"({{"event": "{}", "ptr": "{}", "ptr_info": {}, "syncAtDeviceIdx": "{}", "cudaEvent": "{}"}})",
-        "syncEventStreamWaitEvent",
-        fmt::ptr(id),
-        pointerInfo(id),
-        deviceIdx,
-        fmt::ptr(event));
+    // auto log = fmt::format(
+    //     R"({{"event": "{}", "ptr": "{}", "ptr_info": {}, "syncAtDeviceIdx":
+    //     "{}", "cudaEvent": "{}"}})", "syncEventStreamWaitEvent",
+    //     fmt::ptr(id),
+    //     pointerInfo(id),
+    //     deviceIdx,
+    //     fmt::ptr(event));
     // VLOG(0) << log;
 
     C10_CUDA_CHECK(cudaStreamWaitEvent(stream, event, 0));
