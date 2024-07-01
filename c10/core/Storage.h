@@ -173,12 +173,12 @@ struct C10_API Storage {
   }
 
   bool is_alias_of(const Storage& other) const {
-    bool a = (storage_impl_ == other.storage_impl_);
-    bool b = isSharedStorageAlias(*this, other);
-    bool c= !(a || b);
+    // bool a = (storage_impl_ == other.storage_impl_);
+    // bool b = isSharedStorageAlias(*this, other);
+    // bool c= !(a || b);
     return (
-            storage_impl_ == other.storage_impl_ ||
-            isSharedStorageAlias(*this, other));
+        storage_impl_ == other.storage_impl_ ||
+        isSharedStorageAlias(*this, other));
   }
 
   void UniqueStorageShareExternalPointer(

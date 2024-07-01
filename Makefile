@@ -43,13 +43,9 @@ export USE_GLOO=0
 export USE_GLOG=1
 export USE_NCCL=1
 export USE_CUDNN=1
-export CUDNN_LIBRARY=/opt/conda/lib
-export CUDNN_INCLUDE_DIR=/opt/conda/include
-export DEBUG=1
-export LD_LIBRARY_PATH=/opt/conda/lib
-export ORIGIN=/opt/conda/lib
+# export DEBUG=1
 build:
-	python setup.py build
+	python setup.py develop
 
 rebuild:
 	python setup.py rebuild
