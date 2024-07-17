@@ -68,19 +68,18 @@ Tensor& my_sync_tensor_(Tensor& self, const Tensor& tensor) {
   if (!tensor.is_cuda())
     return self;
 
-  // std::ostringstream log_stream;
-  // log_stream << "{" << R"("event": "syncEvent", )" << R"("ptr": "0x)"
-  //            << std::hex << (unsigned long long)self.data_ptr() << "\", "
-  //            << "\"ptr_info\": "
-  //            << at::detail::getCUDAHooks().my_pointerInfo(self.data_ptr())
-  //            << ", " << R"("syncAtDeviceIdx": ")"
-  //            << std::to_string(tensor.device().index()) << "\", "
-  //            << R"("same_device": ")"
-  //            << ((tensor.device().index() == self.device().index()) ? "true"
-  //                                                                   :
-  //                                                                   "false")
-  //            << "\"" << "}\n";
-  // VLOG(0) << log_stream.str();
+  std::ostringstream log_stream;
+  log_stream << "{" << R"("event": "syncEvent", )" << R"("ptr": "0x)"
+             << std::hex << (unsigned long long)self.data_ptr() << "\", "
+             << "\"ptr_info\": "
+             << at::detail::getCUDAHooks().my_pointerInfo(self.data_ptr())
+             << ", " << R"("syncAtDeviceIdx": ")"
+             << std::to_string(tensor.device().index()) << "\", "
+             << R"("same_device": ")"
+             << ((tensor.device().index() == self.device().index()) ? "true"
+                                                                    : "false")
+             << "\"" << "}\n";
+  VLOG(0) << log_stream.str();
 
   unsigned long long p = (unsigned long long)self.data_ptr();
 

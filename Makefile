@@ -43,7 +43,7 @@ export USE_GLOO=0
 export USE_GLOG=1
 export USE_NCCL=1
 export USE_CUDNN=1
-# export DEBUG=1
+export DEBUG=1
 build:
 	python setup.py develop
 

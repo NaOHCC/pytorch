@@ -96,8 +96,8 @@ class DeviceEventManager {
       cudaEvent_t event = createCudaEvent();
       C10_CUDA_CHECK(cudaEventRecord(event, stream)); // 传输完成事件
 
-      // VLOG(0) << recordEventLog(
-      //     "recordAndReplaceEvent", srcId, dstId, deviceIdx, event);
+      VLOG(0) << recordEventLog(
+          "recordAndReplaceEvent", srcId, dstId, deviceIdx, event);
 
       // Deletes items that already exist.
       auto it = eventMap.find(srcId);
@@ -121,8 +121,7 @@ class DeviceEventManager {
       cudaEvent_t event = createCudaEvent();
       C10_CUDA_CHECK(cudaEventRecord(event, stream)); // 传输完成事件
 
-      // VLOG(0) << recordEventLog("recordEvent", srcId, dstId, deviceIdx,
-      // event);
+      VLOG(0) << recordEventLog("recordEvent", srcId, dstId, deviceIdx, event);
 
       // Deletes items that already exist.
       auto it = eventMap.find(srcId);
@@ -144,22 +143,22 @@ class DeviceEventManager {
       std::unique_lock<std::mutex> lock(mutex);
       auto it = eventMap.find(id);
 
-      // if (enableLog) {
-      //   VLOG(0) << syncEventLog(
-      //       "syncEvent", id, deviceIdx, same_device, it != eventMap.end());
-      // }
+      if (enableLog) {
+        VLOG(0) << syncEventLog(
+            "syncEvent", id, deviceIdx, same_device, it != eventMap.end());
+      }
 
       if (it == eventMap.end()) {
         if (same_device) {
           return;
         }
         cv.wait(lock, [&] {
-          // VLOG(0) << syncEventLog(
-          //     "syncEventWait",
-          //     id,
-          //     deviceIdx,
-          //     same_device,
-          //     it != eventMap.end());
+          VLOG(0) << syncEventLog(
+              "syncEventWait",
+              id,
+              deviceIdx,
+              same_device,
+              it != eventMap.end());
           auto _it = this->eventMap.find(id);
           return _it != this->eventMap.end();
         });
@@ -178,14 +177,15 @@ class DeviceEventManager {
     // C10_CUDA_CHECK(cudaEventSynchronize(event));
     // freeCudaEvent(event);
 
-    // auto log = fmt::format(
-    //     R"({{"event": "{}", "ptr": "{}", "ptr_info": {}, "syncAtDeviceIdx":
-    //     "{}", "cudaEvent": "{}"}})", "syncEventStreamWaitEvent",
-    //     fmt::ptr(id),
-    //     pointerInfo(id),
-    //     deviceIdx,
-    //     fmt::ptr(event));
-    // VLOG(0) << log;
+    auto log = fmt::format(
+        R"({{"event": "{}", "ptr": "{}", "ptr_info": {}, "syncAtDeviceIdx":
+        "{}", "cudaEvent": "{}"}})",
+        "syncEventStreamWaitEvent",
+        fmt::ptr(id),
+        pointerInfo(id),
+        deviceIdx,
+        fmt::ptr(event));
+    VLOG(0) << log;
 
     C10_CUDA_CHECK(cudaStreamWaitEvent(stream, event, 0));
   }
