@@ -39,11 +39,13 @@ triton:
 export CMAKE_C_COMPILER_LAUNCHER=ccache
 export CMAKE_CXX_COMPILER_LAUNCHER=ccache
 export CMAKE_CUDA_COMPILER_LAUNCHER=ccache
-export USE_GLOO=0
+export USE_GLOO=1
 export USE_GLOG=1
 export USE_NCCL=1
 export USE_CUDNN=1
 export DEBUG=1
+export PYTORCH_BUILD_VERSION=2.3.0+cu118
+export PYTORCH_BUILD_NUMBER=1
 build:
 	python setup.py develop
 

@@ -515,7 +515,7 @@ at::Allocator* getCachingHostAllocator() {
 
 // 新分配的内存在Host上，但标记为CUDA
 struct MyCachingCUDAHostAllocator final : public at::Allocator {
-  at::DataPtr allocate(size_t size) const override {
+  at::DataPtr allocate(size_t size) override {
     auto ptr_and_ctx = getCUDAHostAllocator().allocate(size);
     int device;
     AT_CUDA_CHECK(cudaGetDevice(&device));
@@ -524,6 +524,11 @@ struct MyCachingCUDAHostAllocator final : public at::Allocator {
         ptr_and_ctx.second,
         &CUDAHostAllocatorDeleter,
         at::Device(at::DeviceType::CUDA, device)};
+  }
+
+  void copy_data(void* dest, const void* src, std::size_t count)
+      const override {
+    TORCH_CHECK_NOT_IMPLEMENTED(false, "Not implemented for CUDAHostAllocator");
   }
 };
 
